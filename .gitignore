@@ -1,0 +1,42 @@
+# Visual Studio temporary files
+*.obj
+*.log
+*.sdf
+*.tlog
+*.ipch
+*.pch
+*.ilk
+
+# Visual Studio user-specific files
+*.user
+*.vcxproj.user
+*.ncb
+*.suo
+*.cache
+
+# Build directories
+Debug/
+Release/
+x64/
+x86/
+
+# Visual Studio database files
+*.db
+*.opendb
+*.vscode/
+.vs/
+# Visual Studio solution file backups
+*.sln.docstates
+
+# CUDA compilation outputs
+*.ptx
+*.cubin
+*.fatbin
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.tmp
