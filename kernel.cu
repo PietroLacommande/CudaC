@@ -52,6 +52,18 @@ __global__ void addKernel(float *c, const float *a, const float *b)
     
 }
 
+//
+//__global__ void addKernel(float* c, const float* a, const float* b)
+//{
+//    int row = (blockIdx.y * blockDim.y) + threadIdx.y;
+//    int linearIndex;
+//     
+//    for (int column = 0; column < 64 && row <64; column++) {
+//        linearIndex = (row * 64) + column;
+//        c[linearIndex] = a[linearIndex] + b[linearIndex];
+//    }
+//}
+
 int main()
 {
     const int arraySize = 4096;
