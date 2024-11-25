@@ -37,22 +37,22 @@ float* createArray(int rows, int columns) {
     return array;
 }
 
-__global__ void addKernel(float *c, const float *a, const float *b)
-{
-    int row = (blockIdx.y * blockDim.y) + threadIdx.y;
-    int column = (blockIdx.x * blockDim.x) + threadIdx.x;
-
-    
-    int linearIndex = (row * 64) + column;
-    
-    //Cette condition permet de rester dans les limites 
-    if (row < 64 && column < 64) {
-        c[linearIndex] = a[linearIndex] + b[linearIndex];
-    }
-    
-}
-
+//__global__ void addKernel(float *c, const float *a, const float *b)
+//{
+//    int row = (blockIdx.y * blockDim.y) + threadIdx.y;
+//    int column = (blockIdx.x * blockDim.x) + threadIdx.x;
 //
+//    
+//    int linearIndex = (row * 64) + column;
+//    
+//    //Cette condition permet de rester dans les limites 
+//    if (row < 64 && column < 64) {
+//        c[linearIndex] = a[linearIndex] + b[linearIndex];
+//    }
+//    
+//}
+
+
 //__global__ void addKernel(float* c, const float* a, const float* b)
 //{
 //    int row = (blockIdx.y * blockDim.y) + threadIdx.y;
@@ -63,6 +63,17 @@ __global__ void addKernel(float *c, const float *a, const float *b)
 //        c[linearIndex] = a[linearIndex] + b[linearIndex];
 //    }
 //}
+
+__global__ void addKernel(float* c, const float* a, const float* b)
+{
+    int column = (blockIdx.x * blockDim.x) + threadIdx.x;
+    int linearIndex;
+
+    for (int row = 0; row < 64 && column < 64; row++) {
+        linearIndex = (column * 64) + row;
+        c[linearIndex] = a[linearIndex] + b[linearIndex];
+    }
+}
 
 int main()
 {
