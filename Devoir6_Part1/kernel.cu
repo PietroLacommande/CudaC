@@ -37,50 +37,48 @@ float* createArray(int rows, int columns) {
     return array;
 }
 
-
-//__global__ void multiplyKernel(float* c, const float* a, const float* b)
+//
+//__global__ void multiplyKernel(float* c, const float* a, const float* b, int length)
 //{
 //    int row = (blockIdx.y * blockDim.y) + threadIdx.y;
 //    int column = (blockIdx.x * blockDim.x) + threadIdx.x;
-//    int matC = (row * 8 + column);
+//    int indexmatC = (row * length) + column;
 //        
 //    int linearIndexRow;
 //    int linearIndexColumn;
 //
 //    float sum=0;
 //    //Cette condition permet de rester dans les limites 
-//    if (row < 8){
-//        for (int index = 0; index < 8; index++) {
-//            linearIndexRow = (row * 8) + index;
-//            linearIndexColumn = (index*8)+column;
+//    if (row < length && column < length){
+//        for (int index = 0; index < length; index++) {
+//            linearIndexRow = (row * length) + index;
+//            linearIndexColumn = (index* length)+column;
 //            sum += a[linearIndexRow] * b[linearIndexColumn];
 //        }
-//        printf("%.2f", sum);
-//
-//        c[matC] = sum;
+//        c[indexmatC] = sum;
 //    }
 //    
 //}
 
-//__global__ void multiplyKernel(float* c, const float* a, const float* b)
+//__global__ void multiplyKernel(float* c, const float* a, const float* b, int length)
 //{
 //    int row = (blockIdx.y * blockDim.y) + threadIdx.y;
-//    int matC = (row * 8);
+//    int indexMatC = (row * length);
 //
 //    int linearIndexRow;
 //    int linearIndexColumn;
 //
 //    //Cette condition permet de rester dans les limites 
-//    if (row < 8) {
+//    if (row < length) {
 //
-//        for (int i = 0; i < 8; i++) {
+//        for (int column = 0; column < length; column++) {
 //            float sum = 0;
-//            for (int index = 0; index < 8; index++) {
-//                linearIndexRow = (row * 8) + index;
-//                linearIndexColumn = (index * 8) + i;
+//            for (int index = 0; index < length; index++) {
+//                linearIndexRow = (row * length) + index;
+//                linearIndexColumn = (index * length) + column;
 //                sum += a[linearIndexRow] * b[linearIndexColumn];
 //            }
-//            c[(matC+i)] = sum;
+//            c[(indexMatC + column)] = sum;
 //        }
 //        
 //        
@@ -88,26 +86,25 @@ float* createArray(int rows, int columns) {
 //
 //}
 
-__global__ void multiplyKernel(float* c, const float* a, const float* b)
+__global__ void multiplyKernel(float* c, const float* a, const float* b, int length)
 {
     int column = (blockIdx.x * blockDim.x) + threadIdx.x;
-        //int row = (blockIdx.y * blockDim.y) + threadIdx.y;
-    int matC = (column * 8);
+    int indexMatC = (column * length);
 
     int linearIndexRow;
     int linearIndexColumn;
 
     //Cette condition permet de rester dans les limites 
-    if (column < 8) {
+    if (column < length) {
 
-        for (int row = 0; row < 8; row++) {
+        for (int row = 0; row < length; row++) {
             float sum = 0;
-            for (int index = 0; index < 8; index++) {
-                linearIndexRow = (row * 8) + index;
-                linearIndexColumn = (index * 8) + column;
+            for (int index = 0; index < length; index++) {
+                linearIndexRow = (row * length) + index;
+                linearIndexColumn = (index * length) + column;
                 sum += a[linearIndexRow] * b[linearIndexColumn];
             }
-            c[(matC + row)] = sum;
+            c[(indexMatC + row)] = sum;
         }
 
 
@@ -117,7 +114,7 @@ __global__ void multiplyKernel(float* c, const float* a, const float* b)
 
 int main()
 {
-    const int arraySize = 8;
+    const int arraySize = 2;
     const float* a = createArray(arraySize, arraySize);
     const float* b = createArray(arraySize, arraySize);
     float c[(arraySize*arraySize)] = { 0 };
@@ -197,9 +194,23 @@ cudaError_t multiplyWithCuda(float* c, const float* a, const float* b, unsigned 
         
 
     // Launch a kernel on the GPU with one thread for each element.
-    dim3 threadsParBlock(8, 8, 1);
-    dim3 nombreDeBlock((size/8), (size/8), 1);
-    multiplyKernel << <nombreDeBlock, threadsParBlock >> > (dev_c, dev_a, dev_b);
+    if (size == 4) {
+        dim3 threadsParBlock(size, size, 1);
+        dim3 nombreDeBlock(1,1, 1);
+        multiplyKernel << <nombreDeBlock, threadsParBlock >> > (dev_c, dev_a, dev_b, size);
+    }
+
+    else if (size >= 8 && size <= 64) {
+        dim3 threadsParBlock(size, size, 1);
+        dim3 nombreDeBlock((size / 8), (size / 8), 1);
+        multiplyKernel << <nombreDeBlock, threadsParBlock >> > (dev_c, dev_a, dev_b, size);
+    }
+    
+
+    else {
+        printf("Undefined behaviour. Please use matrix size between 8 and 64\n");
+        return cudaErrorInvalidValue;
+    }
 
     // Check for any errors launching the kernel
     cudaStatus = cudaGetLastError();
