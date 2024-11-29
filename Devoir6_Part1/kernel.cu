@@ -6,7 +6,14 @@
 #include <cstdlib> // For rand()
 #include <ctime>   // For seeding rand()
 
-cudaError_t multiplyWithCuda(float* c, const float* a, const float* b, unsigned int size);
+
+typedef enum {
+    KERNEL_ELEMENT = 0,
+    KERNEL_ROW,
+    KERNEL_COLUMN
+} kernelType;
+
+cudaError_t multiplyWithCuda(float* c, const float* a, const float* b, unsigned int size, kernelType type);
 
 void printMatrix(const float* matrix, int rows, int columns, const char* name) {
     printf("Matrix %s:\n", name);
@@ -37,56 +44,56 @@ float* createArray(int rows, int columns) {
     return array;
 }
 
-//
-//__global__ void multiplyKernel(float* c, const float* a, const float* b, int length)
-//{
-//    int row = (blockIdx.y * blockDim.y) + threadIdx.y;
-//    int column = (blockIdx.x * blockDim.x) + threadIdx.x;
-//    int indexmatC = (row * length) + column;
-//        
-//    int linearIndexRow;
-//    int linearIndexColumn;
-//
-//    float sum=0;
-//    //Cette condition permet de rester dans les limites 
-//    if (row < length && column < length){
-//        for (int index = 0; index < length; index++) {
-//            linearIndexRow = (row * length) + index;
-//            linearIndexColumn = (index* length)+column;
-//            sum += a[linearIndexRow] * b[linearIndexColumn];
-//        }
-//        c[indexmatC] = sum;
-//    }
-//    
-//}
 
-//__global__ void multiplyKernel(float* c, const float* a, const float* b, int length)
-//{
-//    int row = (blockIdx.y * blockDim.y) + threadIdx.y;
-//    int indexMatC = (row * length);
-//
-//    int linearIndexRow;
-//    int linearIndexColumn;
-//
-//    //Cette condition permet de rester dans les limites 
-//    if (row < length) {
-//
-//        for (int column = 0; column < length; column++) {
-//            float sum = 0;
-//            for (int index = 0; index < length; index++) {
-//                linearIndexRow = (row * length) + index;
-//                linearIndexColumn = (index * length) + column;
-//                sum += a[linearIndexRow] * b[linearIndexColumn];
-//            }
-//            c[(indexMatC + column)] = sum;
-//        }
-//        
-//        
-//    }
-//
-//}
+__global__ void multiplyKernelElement(float* c, const float* a, const float* b, int length)
+{
+    int row = (blockIdx.y * blockDim.y) + threadIdx.y;
+    int column = (blockIdx.x * blockDim.x) + threadIdx.x;
+    int indexmatC = (row * length) + column;
+        
+    int linearIndexRow;
+    int linearIndexColumn;
 
-__global__ void multiplyKernel(float* c, const float* a, const float* b, int length)
+    float sum=0;
+    //Cette condition permet de rester dans les limites 
+    if (row < length && column < length){
+        for (int index = 0; index < length; index++) {
+            linearIndexRow = (row * length) + index;
+            linearIndexColumn = (index* length)+column;
+            sum += a[linearIndexRow] * b[linearIndexColumn];
+        }
+        c[indexmatC] = sum;
+    }
+    
+}
+
+__global__ void multiplyKernelRow(float* c, const float* a, const float* b, int length)
+{
+    int row = (blockIdx.y * blockDim.y) + threadIdx.y;
+    int indexMatC = (row * length);
+
+    int linearIndexRow;
+    int linearIndexColumn;
+
+    //Cette condition permet de rester dans les limites 
+    if (row < length) {
+
+        for (int column = 0; column < length; column++) {
+            float sum = 0;
+            for (int index = 0; index < length; index++) {
+                linearIndexRow = (row * length) + index;
+                linearIndexColumn = (index * length) + column;
+                sum += a[linearIndexRow] * b[linearIndexColumn];
+            }
+            c[(indexMatC + column)] = sum;
+        }
+        
+        
+    }
+
+}
+
+__global__ void multiplyKernelColumn(float* c, const float* a, const float* b, int length)
 {
     int column = (blockIdx.x * blockDim.x) + threadIdx.x;
     int indexMatC = (column * length);
@@ -114,7 +121,7 @@ __global__ void multiplyKernel(float* c, const float* a, const float* b, int len
 
 int main()
 {
-    const int arraySize = 2;
+    const int arraySize = 8;
     const float* a = createArray(arraySize, arraySize);
     const float* b = createArray(arraySize, arraySize);
     float c[(arraySize*arraySize)] = { 0 };
@@ -124,7 +131,7 @@ int main()
     printMatrix(b, arraySize, arraySize, "B");
 
     // Add vectors in parallel.
-    cudaError_t cudaStatus = multiplyWithCuda(c, a, b, arraySize);
+    cudaError_t cudaStatus = multiplyWithCuda(c, a, b, arraySize, KERNEL_ELEMENT);
     if (cudaStatus != cudaSuccess) {
         fprintf(stderr, "addWithCuda failed!");
         return 1;
@@ -145,7 +152,7 @@ int main()
 }
 
 // Helper function for using CUDA to add vectors in parallel.
-cudaError_t multiplyWithCuda(float* c, const float* a, const float* b, unsigned int size)
+cudaError_t multiplyWithCuda(float* c, const float* a, const float* b, unsigned int size, kernelType type)
 {
     float* dev_a = 0;
     float* dev_b = 0;
@@ -196,14 +203,43 @@ cudaError_t multiplyWithCuda(float* c, const float* a, const float* b, unsigned 
     // Launch a kernel on the GPU with one thread for each element.
     if (size == 4) {
         dim3 threadsParBlock(size, size, 1);
-        dim3 nombreDeBlock(1,1, 1);
-        multiplyKernel << <nombreDeBlock, threadsParBlock >> > (dev_c, dev_a, dev_b, size);
+        dim3 nombreDeBlock(1, 1, 1);
+        switch (type) {
+            case KERNEL_ELEMENT:
+                multiplyKernelElement << <nombreDeBlock, threadsParBlock >> > (dev_c, dev_a, dev_b, size);
+                break;
+            case KERNEL_ROW:
+                multiplyKernelRow << <nombreDeBlock, threadsParBlock >> > (dev_c, dev_a, dev_b, size);
+                break;
+            case KERNEL_COLUMN:
+                multiplyKernelColumn << <nombreDeBlock, threadsParBlock >> > (dev_c, dev_a, dev_b, size);
+                break;
+
+            default:
+                break;
+        }
+            
+        
     }
 
     else if (size >= 8 && size <= 64) {
         dim3 threadsParBlock(size, size, 1);
         dim3 nombreDeBlock((size / 8), (size / 8), 1);
-        multiplyKernel << <nombreDeBlock, threadsParBlock >> > (dev_c, dev_a, dev_b, size);
+
+        switch (type) {
+            case KERNEL_ELEMENT:
+                multiplyKernelElement << <nombreDeBlock, threadsParBlock >> > (dev_c, dev_a, dev_b, size);
+                break;
+            case KERNEL_ROW:
+                multiplyKernelRow << <nombreDeBlock, threadsParBlock >> > (dev_c, dev_a, dev_b, size);
+                break;
+            case KERNEL_COLUMN:
+                multiplyKernelColumn << <nombreDeBlock, threadsParBlock >> > (dev_c, dev_a, dev_b, size);
+                break;
+
+            default:
+                break;
+        }
     }
     
 
