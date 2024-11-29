@@ -38,30 +38,82 @@ float* createArray(int rows, int columns) {
 }
 
 
+//__global__ void multiplyKernel(float* c, const float* a, const float* b)
+//{
+//    int row = (blockIdx.y * blockDim.y) + threadIdx.y;
+//    int column = (blockIdx.x * blockDim.x) + threadIdx.x;
+//    int matC = (row * 8 + column);
+//        
+//    int linearIndexRow;
+//    int linearIndexColumn;
+//
+//    float sum=0;
+//    //Cette condition permet de rester dans les limites 
+//    if (row < 8){
+//        for (int index = 0; index < 8; index++) {
+//            linearIndexRow = (row * 8) + index;
+//            linearIndexColumn = (index*8)+column;
+//            sum += a[linearIndexRow] * b[linearIndexColumn];
+//        }
+//        printf("%.2f", sum);
+//
+//        c[matC] = sum;
+//    }
+//    
+//}
+
+//__global__ void multiplyKernel(float* c, const float* a, const float* b)
+//{
+//    int row = (blockIdx.y * blockDim.y) + threadIdx.y;
+//    int matC = (row * 8);
+//
+//    int linearIndexRow;
+//    int linearIndexColumn;
+//
+//    //Cette condition permet de rester dans les limites 
+//    if (row < 8) {
+//
+//        for (int i = 0; i < 8; i++) {
+//            float sum = 0;
+//            for (int index = 0; index < 8; index++) {
+//                linearIndexRow = (row * 8) + index;
+//                linearIndexColumn = (index * 8) + i;
+//                sum += a[linearIndexRow] * b[linearIndexColumn];
+//            }
+//            c[(matC+i)] = sum;
+//        }
+//        
+//        
+//    }
+//
+//}
+
 __global__ void multiplyKernel(float* c, const float* a, const float* b)
 {
-    int row = (blockIdx.y * blockDim.y) + threadIdx.y;
     int column = (blockIdx.x * blockDim.x) + threadIdx.x;
-    int matC = (row * 8 + column);
-        
+        //int row = (blockIdx.y * blockDim.y) + threadIdx.y;
+    int matC = (column * 8);
+
     int linearIndexRow;
     int linearIndexColumn;
 
-    float sum=0;
     //Cette condition permet de rester dans les limites 
-    if (row < 8){
-        for (int index = 0; index < 8; index++) {
-            linearIndexRow = (row * 8) + index;
-            linearIndexColumn = (index*8)+column;
-            sum += a[linearIndexRow] * b[linearIndexColumn];
+    if (column < 8) {
+
+        for (int row = 0; row < 8; row++) {
+            float sum = 0;
+            for (int index = 0; index < 8; index++) {
+                linearIndexRow = (row * 8) + index;
+                linearIndexColumn = (index * 8) + column;
+                sum += a[linearIndexRow] * b[linearIndexColumn];
+            }
+            c[(matC + row)] = sum;
         }
-        printf("%.2f", sum);
 
-        c[matC] = sum;
+
     }
-    
-}
 
+}
 
 int main()
 {
