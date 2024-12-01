@@ -99,8 +99,6 @@ __global__ void multiplyKernelRow(float* c, const float* a, const float* b, int 
 __global__ void multiplyKernelColumn(float* c, const float* a, const float* b, int length)
 {
     int column = (blockIdx.x * blockDim.x) + threadIdx.x;
-    int indexMatC = (column * length);
-
     int linearIndexRow;
     int linearIndexColumn;
 
@@ -114,7 +112,7 @@ __global__ void multiplyKernelColumn(float* c, const float* a, const float* b, i
                 linearIndexColumn = (index * length) + column;
                 sum += a[linearIndexRow] * b[linearIndexColumn];
             }
-            c[(indexMatC + row)] = sum;
+            c[(row*length)+column] = sum;
         }
 
 
@@ -124,7 +122,7 @@ __global__ void multiplyKernelColumn(float* c, const float* a, const float* b, i
 
 int main()
 {
-    const int arraySize = 8;
+    const int arraySize = 32;
     const float* a = createArray(arraySize, arraySize);
     const float* b = createArray(arraySize, arraySize);
     float c[(arraySize*arraySize)] = { 0 };
@@ -134,7 +132,7 @@ int main()
     printMatrix(b, arraySize, arraySize, "B");
 
     // Add vectors in parallel.
-    cudaError_t cudaStatus = multiplyWithCuda(c, a, b, arraySize, KERNEL_ELEMENT);
+    cudaError_t cudaStatus = multiplyWithCuda(c, a, b, arraySize, KERNEL_COLUMN);
     if (cudaStatus != cudaSuccess) {
         fprintf(stderr, "addWithCuda failed!");
         return 1;
