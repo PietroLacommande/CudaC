@@ -5,7 +5,10 @@
 #include <stdio.h>
 #include <cstdlib> // For rand()
 #include <ctime>   // For seeding rand()
-
+;
+const int blockWidth = 8;
+const int minMatrixWidth = 8;
+const int maxMatrixWidth = 64;
 
 typedef enum {
     KERNEL_ELEMENT = 0,
@@ -200,7 +203,7 @@ cudaError_t multiplyWithCuda(float* c, const float* a, const float* b, unsigned 
     }
         
 
-    // Launch a kernel on the GPU with one thread for each element.
+    // Launch a kernel on the GPU
     if (size == 4) {
         dim3 threadsParBlock(size, size, 1);
         dim3 nombreDeBlock(1, 1, 1);
@@ -222,9 +225,9 @@ cudaError_t multiplyWithCuda(float* c, const float* a, const float* b, unsigned 
         
     }
 
-    else if (size >= 8 && size <= 64) {
+    else if (size >= minMatrixWidth && size <= maxMatrixWidth) {
         dim3 threadsParBlock(size, size, 1);
-        dim3 nombreDeBlock((size / 8), (size / 8), 1);
+        dim3 nombreDeBlock((size / blockWidth), (size / blockWidth), 1);
 
         switch (type) {
             case KERNEL_ELEMENT:
