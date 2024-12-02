@@ -7,7 +7,7 @@
 #include <cstdlib> // For rand()
 #include <ctime>   // For seeding rand()
 
-#define tileLength (int)2
+#define tileLength (int)16
 
 
 cudaError_t multiplyWithCuda(float* c, const float* a, const float* b, unsigned int size);
